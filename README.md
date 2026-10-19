@@ -1,3 +1,46 @@
+personal-context-mcp — Doctolib tools, agent evals and Hermes Agent
+A fork of PBenavides/personal-context-mcp, a TypeScript MCP server that gives AI agents access to personal tools (Google Calendar, YNAB, Hevy). This fork adds read-only Doctolib appointment search and an eval harness that scores how real LLMs use the tools, and connects the server to Hermes Agent.
+
+· Upstream pull request: #9 (merged)
+
+What I added
+doctolib_search	Practitioners for a specialty in a city, with their open slots, soonest first
+doctolib_practitioner	One profile: visit types, locations, booking link, and any visit type's slots for a date range
+Eval harness (feat/agent-evals branch)	Runs any OpenRouter model against the server and scores tool choice, arguments, call count and answer with deterministic checks; native and prompted (Hermes <tool_call>) tool calling
+Both Doctolib tools are read-only: they never book or cancel, and every result carries a link the user opens to book.
+
+Results
+6 endpoint-shaped tools redesigned into 2 intent-shaped ones: tool definitions 47% smaller, search responses 64% smaller.
+Agents went from 2–3 tool calls per question to 0.9 (nemotron-3-super-120b, 6 cases × 2 runs).
+Live testing found bugs the unit tests missed: 10 of 15 inherited specialty keywords returned nothing, and English is gb in Doctolib's filter, not en (0 vs 464 results).
+Through Hermes Agent on claude-haiku-5.5, a real appointment question takes one tool call and costs under $0.01.
+Run it
+```bash
+npm ci
+cp .env.example .env # add Google Calendar keys to enable gcal_*
+npm run dev # http://localhost:3000
+```
+
+The Doctolib tools need no credentials. They are served at POST /personal-tools. Check with curl localhost:3000/ready.
+
+Use it from Hermes Agent
+Add to Hermes's config.yaml (%LOCALAPPDATA%\hermes on Windows, ~/.hermes elsewhere):
+
+```yaml
+mcp_servers:
+personal_tools:
+url: "http://localhost:3000/personal-tools"
+timeout: 120
+```
+
+Then hermes mcp test personal_tools and ask: find an English-speaking dentist in Berlin with a slot tomorrow.
+
+Notes
+Doctolib has no public API. The tools read the same public search and availability data as its website, anonymously and throttled, and do not get around its bot protection. From VPN or cloud IPs they return a doctolib.de link instead of results.
+Built with Claude Code as an AI pair programmer.
+Doctolib client ported from esinecan/doctolib-mcp.
+The rest of the server is documented in [docs/](docs/).
+
 # personal-context-mcp
 
 A Fastify host that serves two MCP servers over **streamable HTTP**:
